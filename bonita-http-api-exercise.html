@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vacation Request — Bonita HTTP API Exercise</title>
+<style>
+  :root {
+    --bg: #0f1419;
+    --panel: #1a212b;
+    --panel-2: #222c38;
+    --border: #2d3947;
+    --text: #e6edf3;
+    --muted: #8b98a5;
+    --accent: #4f9cf9;
+    --get: #2ea043;
+    --post: #d29922;
+    --java: #b07219;
+    --code-bg: #0b0f14;
+    --ok: #2ea043;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+  }
+  header {
+    padding: 28px 32px 20px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, #18202b, #0f1419);
+    position: sticky; top: 0; z-index: 50;
+  }
+  header h1 { margin: 0 0 6px; font-size: 22px; }
+  header p { margin: 0; color: var(--muted); font-size: 14px; }
+  .controls {
+    display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+    margin-top: 16px;
+  }
+  .controls input[type="text"] {
+    flex: 1; min-width: 220px;
+    background: var(--code-bg); border: 1px solid var(--border);
+    color: var(--text); padding: 9px 12px; border-radius: 8px; font-size: 14px;
+  }
+  .controls label { font-size: 13px; color: var(--muted); }
+  .controls .baseurl {
+    display: flex; align-items: center; gap: 8px;
+  }
+  .controls .baseurl input {
+    background: var(--code-bg); border: 1px solid var(--border);
+    color: var(--accent); padding: 7px 10px; border-radius: 8px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px;
+    width: 240px;
+  }
+  button.btn {
+    background: var(--panel-2); border: 1px solid var(--border); color: var(--text);
+    padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 13px;
+  }
+  button.btn:hover { border-color: var(--accent); }
+  main { max-width: 980px; margin: 0 auto; padding: 24px 20px 80px; }
+  .flow-note {
+    background: var(--panel); border: 1px solid var(--border); border-left: 3px solid var(--accent);
+    padding: 14px 18px; border-radius: 8px; margin-bottom: 24px; font-size: 14px; color: var(--muted);
+  }
+  .flow-note b { color: var(--text); }
+  .card {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 12px; margin-bottom: 16px; overflow: hidden;
+  }
+  .card-head {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 18px; cursor: pointer; user-select: none;
+  }
+  .card-head:hover { background: var(--panel-2); }
+  .step-num {
+    background: var(--accent); color: #001; font-weight: 700;
+    width: 26px; height: 26px; border-radius: 50%;
+    display: grid; place-items: center; font-size: 13px; flex-shrink: 0;
+  }
+  .verb {
+    font-family: ui-monospace, monospace; font-weight: 700; font-size: 12px;
+    padding: 3px 9px; border-radius: 5px; flex-shrink: 0;
+  }
+  .verb.GET { background: rgba(46,160,67,.18); color: var(--get); border: 1px solid var(--get); }
+  .verb.POST { background: rgba(210,153,34,.18); color: var(--post); border: 1px solid var(--post); }
+  .card-head .path {
+    font-family: ui-monospace, monospace; font-size: 14px; color: var(--text);
+    flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .card-head .javaname {
+    font-size: 12px; color: var(--java); font-family: ui-monospace, monospace;
+  }
+  .chevron { color: var(--muted); transition: transform .2s; flex-shrink: 0; }
+  .card.open .chevron { transform: rotate(90deg); }
+  .card-body { display: none; padding: 0 18px 18px; }
+  .card.open .card-body { display: block; }
+  .card-body h4 {
+    margin: 18px 0 8px; font-size: 12px; text-transform: uppercase;
+    letter-spacing: .5px; color: var(--muted);
+  }
+  .desc { color: var(--text); font-size: 14px; margin: 6px 0 0; }
+  .maps-from {
+    font-family: ui-monospace, monospace; font-size: 13px; color: var(--java);
+    background: rgba(176,114,25,.1); border: 1px solid rgba(176,114,25,.35);
+    padding: 8px 12px; border-radius: 7px; margin-top: 8px; word-break: break-all;
+  }
+  .codeblock { position: relative; }
+  pre {
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 14px 14px; margin: 6px 0 0;
+    overflow-x: auto; font-family: ui-monospace, monospace; font-size: 13px;
+    color: #c9d6e3;
+  }
+  .copy {
+    position: absolute; top: 8px; right: 8px;
+    background: var(--panel-2); border: 1px solid var(--border); color: var(--muted);
+    font-size: 11px; padding: 4px 8px; border-radius: 6px; cursor: pointer;
+  }
+  .copy:hover { color: var(--text); border-color: var(--accent); }
+  .copy.done { color: var(--ok); border-color: var(--ok); }
+  table.params { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 6px; }
+  table.params th, table.params td {
+    text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--border);
+  }
+  table.params th { color: var(--muted); font-weight: 600; }
+  table.params td code {
+    font-family: ui-monospace, monospace; color: var(--accent);
+    background: var(--code-bg); padding: 1px 5px; border-radius: 4px;
+  }
+  .pill {
+    display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 10px;
+    background: var(--panel-2); border: 1px solid var(--border); color: var(--muted);
+  }
+  .hidden { display: none !important; }
+  footer { text-align: center; color: var(--muted); font-size: 12px; padding: 20px; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Vacation Request — Bonita HTTP API Exercise</h1>
+  <p>Each step below maps a Java <code>VacationRequestService</code> method to the equivalent Bonita REST call.
+  Reproduce the flow in any language using plain HTTP.</p>
+  <div class="controls">
+    <input type="text" id="search" placeholder="Filter steps (e.g. user, task, instantiate)…">
+    <div class="baseurl">
+      <label>Base URL</label>
+      <input type="text" id="baseurl" value="http://localhost:8080/bonita">
+    </div>
+    <button class="btn" id="expandAll">Expand all</button>
+    <button class="btn" id="collapseAll">Collapse all</button>
+  </div>
+</header>
+
+<main>
+  <div class="flow-note">
+    <b>Auth model.</b> Bonita uses a session cookie. Call <b>login</b> first; the response sets a
+    <code>JSESSIONID</code> cookie plus an <code>X-Bonita-API-Token</code>. Send the cookie on every later
+    request, and echo the token in an <code>X-Bonita-API-Token</code> header for any <code>POST</code>/<code>PUT</code>/<code>DELETE</code>.
+    The original Java also adds HTTP Basic auth (<code>http-api</code> / <code>h11p-@p1</code>) at the reverse-proxy layer — keep that header if your server requires it.
+  </div>
+
+  <div id="cards"></div>
+</main>
+
+<footer>
+  Generated from <code>VacationRequestService.java</code> · Bonita HTTP API ·
+  <a href="https://api-documentation.ofelia.com/latest/" target="_blank" rel="noopener">API reference</a>
+</footer>
+
+<script>
+const BASE_PLACEHOLDER = "{{BASE}}";
+
+const steps = [
+  {
+    java: "login()",
+    verb: "POST",
+    path: "/loginservice",
+    keywords: "login auth session connect credentials",
+    desc: "Open a Bonita session. On success the server returns a JSESSIONID cookie and an X-Bonita-API-Token. Store both — every later call needs the cookie, and write calls need the token header.",
+    mapsFrom: "apiClient.login(username, password) — settings via APITypeManager.setAPITypeAndParams(...)",
+    params: [
+      ["username", "form field", "e.g. walter.bates"],
+      ["password", "form field", "e.g. bpm"],
+      ["redirect", "form field", "false (return status, do not redirect)"]
+    ],
+    request: {
+      lang: "Content-Type: application/x-www-form-urlencoded",
+      body: "username=walter.bates&password=bpm&redirect=false"
+    },
+    curl: `curl -i -c cookies.txt -X POST "{{BASE}}/loginservice" \\
+  -H "Content-Type: application/x-www-form-urlencoded" \\
+  --data-urlencode "username=walter.bates" \\
+  --data-urlencode "password=bpm" \\
+  --data-urlencode "redirect=false"`
+  },
+  {
+    java: "getProcessDefinitionByName(name)  [search]",
+    verb: "GET",
+    path: "/API/bpm/process",
+    keywords: "search process definition deployment find by name latest version",
+    desc: "Find the process definition by name, newest version first. Read the id of the first result — that is the processDefinitionId used to instantiate. Filter f=name=..., sort o=version DESC, take one result (c=1, p=0).",
+    mapsFrom: "processAPI.searchProcessDeploymentInfos(searchBuilder.done())",
+    params: [
+      ["p", "query", "page index, e.g. 0"],
+      ["c", "query", "count per page, e.g. 1"],
+      ["f", "query", "filter, e.g. name=New Vacation Request"],
+      ["o", "query", "order, e.g. version DESC"]
+    ],
+    curl: `curl -s -b cookies.txt \\
+  "{{BASE}}/API/bpm/process?p=0&c=1&f=name=New%20Vacation%20Request&o=version%20DESC"`
+  },
+  {
+    java: "getProcessDefinitionByName(name)  [fetch]",
+    verb: "GET",
+    path: "/API/bpm/process/{id}",
+    keywords: "process definition get by id details",
+    desc: "Optional: fetch the full process definition by its id (the search result above already carries it). Returns name, version and the processId used to start instances.",
+    mapsFrom: "processAPI.getProcessDefinition(processDefinitionId)",
+    params: [
+      ["id", "path", "processDefinitionId from the search result"]
+    ],
+    curl: `curl -s -b cookies.txt "{{BASE}}/API/bpm/process/{id}"`
+  },
+  {
+    java: "instantiateVacationRequest(startDate, returnDate, numberOfDays)",
+    verb: "POST",
+    path: "/API/bpm/process/{id}/instantiation",
+    keywords: "start instantiate create case contract inputs vacation request",
+    desc: "Start a new case of the process, passing the process-level contract inputs as a flat JSON object. Returns the created case id (caseId). Use the processDefinitionId from the search step as {id}.",
+    mapsFrom: "processAPI.startProcessWithInputs(processDefinitionId, contractInputs)",
+    params: [
+      ["id", "path", "processDefinitionId"],
+      ["startDateContract", "body", "ISO date, e.g. 2025-12-20"],
+      ["returnDateContract", "body", "ISO date, e.g. 2025-12-27"],
+      ["numberOfDaysContract", "body", "integer, e.g. 5"]
+    ],
+    request: {
+      lang: "Content-Type: application/json",
+      body: `{
+  "startDateContract": "2025-12-20",
+  "returnDateContract": "2025-12-27",
+  "numberOfDaysContract": 5
+}`
+    },
+    curl: `curl -s -b cookies.txt -X POST \\
+  "{{BASE}}/API/bpm/process/{id}/instantiation" \\
+  -H "Content-Type: application/json" \\
+  -H "X-Bonita-API-Token: <token-from-login>" \\
+  -d '{
+        "startDateContract": "2025-12-20",
+        "returnDateContract": "2025-12-27",
+        "numberOfDaysContract": 5
+      }'`
+  },
+  {
+    java: "getProcessInitiatorManager(processInstanceId)  [get case]",
+    verb: "GET",
+    path: "/API/bpm/case/{id}",
+    keywords: "process instance case get started by initiator",
+    desc: "A running process instance is a 'case'. Fetch it to read started_by — the user id of the initiator. (Use /API/bpm/archivedCase/{id} if the case has already finished.)",
+    mapsFrom: "processAPI.getProcessInstance(processInstanceId)  →  processInstance.getStartedBy()",
+    params: [
+      ["id", "path", "caseId returned by instantiation"]
+    ],
+    curl: `curl -s -b cookies.txt "{{BASE}}/API/bpm/case/{id}"`
+  },
+  {
+    java: "getProcessInitiatorManager(...)  [get initiator, then manager]",
+    verb: "GET",
+    path: "/API/identity/user/{id}",
+    keywords: "user identity manager get by id initiator firstname lastname",
+    desc: "Fetch a user by id. Read manager_id from the initiator's record, then call this endpoint again with that id to get the manager. A manager_id of 0 means no manager.",
+    mapsFrom: "identityAPI.getUser(startedBy)  then  identityAPI.getUser(managerId)",
+    params: [
+      ["id", "path", "first: started_by; then: manager_id"]
+    ],
+    curl: `# 1) the initiator
+curl -s -b cookies.txt "{{BASE}}/API/identity/user/{started_by}"
+
+# 2) read manager_id from the response, then the manager
+curl -s -b cookies.txt "{{BASE}}/API/identity/user/{manager_id}"`
+  },
+  {
+    java: "listAndExecuteReviewTask(...)  [whoami]",
+    verb: "GET",
+    path: "/API/system/session/unusedId",
+    keywords: "session current user id whoami",
+    desc: "Get the current session to read the logged-in user_id. Needed to filter human tasks assigned to that user.",
+    mapsFrom: "apiClient.getSession().getUserId()",
+    params: [],
+    curl: `curl -s -b cookies.txt "{{BASE}}/API/system/session/unusedId"`
+  },
+  {
+    java: "listAndExecuteReviewTask(status, comments)  [list tasks]",
+    verb: "GET",
+    path: "/API/bpm/humanTask",
+    keywords: "human task list assigned pending review request priority",
+    desc: "List human tasks assigned to the current user. Filter by assigned_id, sort by priority ascending, page with p/c. Pick the first task and execute it in the next step.",
+    mapsFrom: "processAPI.getAssignedHumanTaskInstances(userId, 0, 20, ActivityInstanceCriterion.PRIORITY_ASC)",
+    params: [
+      ["p", "query", "page index, e.g. 0"],
+      ["c", "query", "count, e.g. 20"],
+      ["f", "query", "filter, e.g. assigned_id={userId}"],
+      ["o", "query", "order, e.g. priority ASC"]
+    ],
+    curl: `curl -s -b cookies.txt \\
+  "{{BASE}}/API/bpm/humanTask?p=0&c=20&f=assigned_id={userId}&o=priority%20ASC"`
+  },
+  {
+    java: "executeReviewTask(taskId, status, comments)",
+    verb: "POST",
+    path: "/API/bpm/userTask/{id}/execution",
+    keywords: "execute user task review approve reject contract comments",
+    desc: "Execute the human task with its contract inputs. status must be 'approved' or 'rejected'. The actor filter already assigned the task, so plain execution is enough; if the user was only a candidate, assign first (set the assigned_id via PUT /API/bpm/humanTask/{id}) or use the assign-and-execute variant.",
+    mapsFrom: "processAPI.executeUserTask(taskId, taskContractInputs)",
+    params: [
+      ["id", "path", "taskId from the list step"],
+      ["statusContract", "body", "approved | rejected"],
+      ["commentsContract", "body", "free text"]
+    ],
+    request: {
+      lang: "Content-Type: application/json",
+      body: `{
+  "statusContract": "approved",
+  "commentsContract": "Looks good, approved!"
+}`
+    },
+    curl: `curl -s -b cookies.txt -X POST \\
+  "{{BASE}}/API/bpm/userTask/{id}/execution" \\
+  -H "Content-Type: application/json" \\
+  -H "X-Bonita-API-Token: <token-from-login>" \\
+  -d '{
+        "statusContract": "approved",
+        "commentsContract": "Looks good, approved!"
+      }'`
+  },
+  {
+    java: "logout()",
+    verb: "GET",
+    path: "/logoutservice",
+    keywords: "logout end session disconnect",
+    desc: "Close the Bonita session. Send the JSESSIONID cookie so the right session is dropped.",
+    mapsFrom: "apiClient.logout()",
+    params: [
+      ["redirect", "query", "false (optional)"]
+    ],
+    curl: `curl -s -b cookies.txt "{{BASE}}/logoutservice?redirect=false"`
+  }
+];
+
+const baseInput = document.getElementById("baseurl");
+const cardsEl = document.getElementById("cards");
+
+function applyBase(text) {
+  const base = baseInput.value.replace(/\/+$/, "");
+  return text.replaceAll(BASE_PLACEHOLDER, base);
+}
+
+function esc(s) {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function render() {
+  cardsEl.innerHTML = "";
+  steps.forEach((s, i) => {
+    const card = document.createElement("div");
+    card.className = "card";
+    card.dataset.keywords = (s.keywords + " " + s.java + " " + s.path + " " + s.verb).toLowerCase();
+
+    let paramsRows = (s.params || []).map(p =>
+      `<tr><td><code>${esc(p[0])}</code></td><td><span class="pill">${esc(p[1])}</span></td><td>${esc(p[2])}</td></tr>`
+    ).join("");
+    let paramsTable = (s.params && s.params.length)
+      ? `<h4>Parameters</h4><table class="params"><tr><th>Name</th><th>In</th><th>Notes</th></tr>${paramsRows}</table>`
+      : "";
+
+    let requestBlock = "";
+    if (s.request) {
+      requestBlock = `<h4>Request body</h4>
+        <div class="codeblock">
+          <pre>${esc(s.request.lang)}\n\n${esc(s.request.body)}</pre>
+          <button class="copy" data-copy="req">Copy</button>
+        </div>`;
+    }
+
+    card.innerHTML = `
+      <div class="card-head">
+        <span class="step-num">${i + 1}</span>
+        <span class="verb ${s.verb}">${s.verb}</span>
+        <span class="path">${esc(s.path)}</span>
+        <span class="chevron">▶</span>
+      </div>
+      <div class="card-body">
+        <div class="javaname">⟵ Java: ${esc(s.java)}</div>
+        <p class="desc">${esc(s.desc)}</p>
+        <h4>Maps from</h4>
+        <div class="maps-from">${esc(s.mapsFrom)}</div>
+        ${paramsTable}
+        ${requestBlock}
+        <h4>Try it (curl)</h4>
+        <div class="codeblock">
+          <pre data-curl>${esc(applyBase(s.curl))}</pre>
+          <button class="copy" data-copy="curl">Copy</button>
+        </div>
+      </div>`;
+
+    // store raw bodies for copy
+    if (s.request) card._reqText = s.request.lang + "\n\n" + s.request.body;
+    card._curlRaw = s.curl;
+
+    const head = card.querySelector(".card-head");
+    head.addEventListener("click", () => card.classList.toggle("open"));
+
+    card.querySelectorAll(".copy").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const kind = btn.dataset.copy;
+        const text = kind === "req" ? card._reqText : applyBase(card._curlRaw);
+        navigator.clipboard.writeText(text).then(() => {
+          btn.textContent = "Copied ✓"; btn.classList.add("done");
+          setTimeout(() => { btn.textContent = "Copy"; btn.classList.remove("done"); }, 1200);
+        });
+      });
+    });
+
+    cardsEl.appendChild(card);
+  });
+}
+
+// re-render curl blocks when base URL changes
+baseInput.addEventListener("input", () => {
+  document.querySelectorAll(".card").forEach(card => {
+    const pre = card.querySelector("pre[data-curl]");
+    if (pre) pre.textContent = applyBase(card._curlRaw);
+  });
+});
+
+document.getElementById("search").addEventListener("input", (e) => {
+  const q = e.target.value.trim().toLowerCase();
+  document.querySelectorAll(".card").forEach(card => {
+    const hit = !q || card.dataset.keywords.includes(q);
+    card.classList.toggle("hidden", !hit);
+  });
+});
+
+document.getElementById("expandAll").addEventListener("click", () =>
+  document.querySelectorAll(".card").forEach(c => c.classList.add("open")));
+document.getElementById("collapseAll").addEventListener("click", () =>
+  document.querySelectorAll(".card").forEach(c => c.classList.remove("open")));
+
+render();
+</script>
+</body>
+</html>
